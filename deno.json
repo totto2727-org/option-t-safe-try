@@ -1,0 +1,9 @@
+{
+  "name": "@totto/option-t-safe-try",
+  "version": "0.1.0",
+  "exports": "./main.ts",
+  "lock": false,
+  "tasks": {
+    "dev": "deno test --watch main_test.ts"
+  }
+}
