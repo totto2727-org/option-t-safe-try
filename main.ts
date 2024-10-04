@@ -1,5 +1,5 @@
 /*
- * The following code is modified for option-t.
+ * This is a port of [neverthrow](https://github.com/supermacro/neverthrow)'s `safeUnwrap` and `safeTry` to [option-t](https://github.com/gcanti/option-t).
  *
  * https://github.com/supermacro/neverthrow/blob/master/src/result.ts
  * https://github.com/supermacro/neverthrow/blob/master/src/result-async.ts
@@ -29,13 +29,33 @@
 
 import { Result as R } from "npm:option-t@49/plain_result/namespace";
 
-// type InferOkTypes<T> = T extends R.Result<infer OK, unknown> ? OK : never;
-// type InferErrTypes<T> = T extends R.Result<unknown, infer ERR> ? ERR : never;
+/*
+ * Workaround for the problem of nullable inference results due to the implementation of option-t's Result
+ * Related Issue: https://github.com/option-t/option-t/issues/2362
+ * Related PR: https://github.com/option-t/option-t/pull/2245
+ *
+ * As soon as #2245 is merged, this workaround will no longer be necessary.
+ */
+/**
+ * Infer the Ok type from the Result type
+ *
+ * Verifying up to the Ok type to prevent it from becoming nullable.
+ */
 type InferOk<T extends R.Result<unknown, unknown>> = T extends R.Ok<infer O> ? O
   : never;
+
+/**
+ * Infer the Err type from the Result type
+ *
+ * Verifying up to the Err type to prevent it from becoming nullable.
+ */
 type InferErr<T extends R.Result<unknown, unknown>> = T extends R.Err<infer E>
   ? E
   : never;
+
+// Original implementation
+// type InferOk<T> = T extends R.Result<infer OK, unknown> ? OK : never;
+// type InferErr<T> = T extends R.Result<unknown, infer ERR> ? ERR : never;
 
 /**
  * Evaluates the given generator to a Result returned or an Err yielded from it, whichever comes first.
@@ -112,39 +132,53 @@ export function safeTry<T, E>(
     | (() => AsyncGenerator<R.Err<E>, R.Result<T, E>>),
 ): R.Result<T, E> | Promise<R.Result<T, E>> {
   const n = body().next();
-  if (n instanceof Promise) {
+  if ("then" in n) {
     return n.then((r) => r.value);
   }
   return n.value;
 }
 
+/**
+ * Emulates Rust's `?` operator in `safeTry`'s body. See also `safeTry`.
+ *
+ * Implementation of `?` operator for Ok type
+ *
+ * @param result Synchronous Ok
+ */
 function _safeUnwrapOk<const RESULT extends R.Result<unknown, unknown>>(
   result: RESULT,
 ): Generator<R.Err<InferErr<RESULT>>, InferOk<RESULT>> {
-  if (R.isErr(result)) {
-    throw new TypeError("This is not Ok type");
-  }
-
   // deno-lint-ignore require-yield
   return (function* () {
-    return result.val as InferOk<RESULT>;
+    return R.unwrapOk(result) as InferOk<RESULT>;
   })();
 }
 
+/**
+ * Emulates Rust's `?` operator in `safeTry`'s body. See also `safeTry`.
+ *
+ * Implementation of `?` operator for Err type
+ *
+ * @param result Synchronous Err
+ */
 function _safeUnwrapErr<const RESULT extends R.Result<unknown, unknown>>(
   result: RESULT,
 ): Generator<R.Err<InferErr<RESULT>>, InferOk<RESULT>> {
-  if (R.isOk(result)) {
-    throw new TypeError("This is not Err type");
-  }
-
   return (function* () {
+    R.unwrapErr(result);
     yield result as R.Err<InferErr<RESULT>>;
 
     throw new Error("Do not use this generator out of `safeTry`");
   })();
 }
 
+/**
+ * Emulates Rust's `?` operator in `safeTry`'s body. See also `safeTry`.
+ *
+ * Implementation of `?` operator for Synchronous Result type
+ *
+ * @param result Synchronous Result
+ */
 function _safeUnwrap<const RESULT extends R.Result<unknown, unknown>>(
   result: RESULT,
 ): Generator<R.Err<InferErr<RESULT>>, InferOk<RESULT>> {
@@ -157,6 +191,13 @@ function _safeUnwrap<const RESULT extends R.Result<unknown, unknown>>(
   throw new TypeError("This is not Result type");
 }
 
+/**
+ * Emulates Rust's `?` operator in `safeTry`'s body. See also `safeTry`.
+ *
+ * Implementation of `?` operator for Asynchronous Result type
+ *
+ * @param result Asynchronous Result
+ */
 function _safeUnwrapAsync<
   const RESULT extends R.Result<unknown, unknown>,
 >(

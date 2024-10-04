@@ -1,5 +1,5 @@
 /*
- * The following code is modified for option-t.
+ * This is a port of [neverthrow](https://github.com/supermacro/neverthrow)'s `safeUnwrap` and `safeTry` to [option-t](https://github.com/gcanti/option-t).
  *
  * https://github.com/supermacro/neverthrow/blob/master/tests/safe-try.test.ts
  *
