@@ -46,10 +46,18 @@ type InferErr<T extends R.Result<unknown, unknown>> = T extends R.Err<infer E>
  * @param body - What is evaluated. In body, `yield* safeUnwrap(result)` works as Rust's `result?` expression.
  * @returns The first occurrence of either an yielded Err or a returned Result.
  */
-// Synchronous
 export function safeTry<T, E>(
   body: () => Generator<R.Err<E>, R.Result<T, E>>,
 ): R.Result<T, E>;
+/**
+ * Evaluates the given generator to a Result returned or an Err yielded from it, whichever comes first.
+ *
+ * This function, in combination with `safeUnwrap()`, is intended to emulate Rust's ? operator.
+ * See `./main_test.ts` for examples.
+ *
+ * @param body - What is evaluated. In body, `yield* safeUnwrap(result)` works as Rust's `result?` expression.
+ * @returns The first occurrence of either an yielded Err or a returned Result.
+ */
 export function safeTry<
   YieldErr extends R.Err<unknown>,
   GeneratorReturnResult extends R.Result<unknown, unknown>,
@@ -59,11 +67,27 @@ export function safeTry<
   InferOk<GeneratorReturnResult>,
   InferErr<YieldErr> | InferErr<GeneratorReturnResult>
 >;
-
-// Asynchronous
+/**
+ * Evaluates the given generator to a Result returned or an Err yielded from it, whichever comes first.
+ *
+ * This function, in combination with `safeUnwrap()`, is intended to emulate Rust's ? operator.
+ * See `./main_test.ts` for examples.
+ *
+ * @param body - What is evaluated. In body, `yield* safeUnwrap(result)` works as Rust's `result?` expression.
+ * @returns The first occurrence of either an yielded Err or a returned Result.
+ */
 export function safeTry<T, E>(
   body: () => AsyncGenerator<R.Err<E>, R.Result<T, E>>,
 ): Promise<R.Result<T, E>>;
+/**
+ * Evaluates the given generator to a Result returned or an Err yielded from it, whichever comes first.
+ *
+ * This function, in combination with `safeUnwrap()`, is intended to emulate Rust's ? operator.
+ * See `./main_test.ts` for examples.
+ *
+ * @param body - What is evaluated. In body, `yield* safeUnwrap(result)` works as Rust's `result?` expression.
+ * @returns The first occurrence of either an yielded Err or a returned Result.
+ */
 export function safeTry<
   YieldErr extends R.Err<unknown>,
   GeneratorReturnResult extends R.Result<unknown, unknown>,
@@ -76,12 +100,18 @@ export function safeTry<
   >
 >;
 
+/**
+ * Implementation of `safeTry`
+ *
+ * @param body
+ * @returns Result or Promise<Result>
+ */
 export function safeTry<T, E>(
-  generator:
+  body:
     | (() => Generator<R.Err<E>, R.Result<T, E>>)
     | (() => AsyncGenerator<R.Err<E>, R.Result<T, E>>),
 ): R.Result<T, E> | Promise<R.Result<T, E>> {
-  const n = generator().next();
+  const n = body().next();
   if (n instanceof Promise) {
     return n.then((r) => r.value);
   }
@@ -148,18 +178,29 @@ function _safeUnwrapAsync<
 /**
  * Emulates Rust's `?` operator in `safeTry`'s body. See also `safeTry`.
  *
- * @param result
+ * @param result Synchronous Result
  */
-// Synchronous
 export function safeUnwrap<const RESULT extends R.Result<unknown, unknown>>(
   result: RESULT,
 ): Generator<R.Err<InferErr<RESULT>>, InferOk<RESULT>>;
-// Asynchronous
+
+/**
+ * Emulates Rust's `?` operator in `safeTry`'s body. See also `safeTry`.
+ *
+ * @param result Asynchronous Result
+ */
 export function safeUnwrap<
   const RESULT extends R.Result<unknown, unknown>,
 >(
   result: Promise<RESULT>,
 ): AsyncGenerator<R.Err<InferErr<RESULT>>, InferOk<RESULT>>;
+
+/**
+ * Implementation of `safeUnwrap`
+ *
+ * @param result
+ * @returns Generator<Result> or AsyncGenerator<Result>
+ */
 export function safeUnwrap<const RESULT extends R.Result<unknown, unknown>>(
   result: RESULT | PromiseLike<RESULT>,
 ):
